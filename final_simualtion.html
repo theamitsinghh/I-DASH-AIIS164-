@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HYROX // AI Hybrid Warfare Intelligence System</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════
+//   SIDEBAR TOGGLE
+// ═══════════════════════════════════════
+function togglePanel(){
+  const panel = document.getElementById('panel');
+  panel.classList.toggle('collapsed');
+  document.body.classList.toggle('panel-open', !panel.classList.contains('collapsed'));
+  setTimeout(()=>{ map.invalidateSize(); }, 320);
+}
+
+// ═══════════════════════════════════════
+//   FULLSCREEN
+// ═══════════════════════════════════════
+function toggleFullscreen(){
+  const el = document.getElementById('map-wrap');
+  const btn = document.getElementById('btn-fullscreen');
+  if(!document.fullscreenElement){
+    el.requestFullscreen && el.requestFullscreen();
+    btn.textContent = '✕';
+    btn.title = 'Exit Fullscreen';
+  } else {
+    document.exitFullscreen && document.exitFullscreen();
+    btn.textContent = '⛶';
+    btn.title = 'Fullscreen';
+  }
+}
+document.addEventListener('fullscreenchange',()=>{
+  const btn = document.getElementById('btn-fullscreen');
+  if(!document.fullscreenElement){
+    btn.textContent='⛶';
+    btn.title='Fullscreen';
+  }
+  setTimeout(()=>{ if(map) map.invalidateSize(); }, 100);
+});
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+  /* 🇮🇳 India Border Glow Effect */
+.glow-border {
+  filter: drop-shadow(0 0 6px #00ffff)
+          drop-shadow(0 0 12px #00ffff)
+          drop-shadow(0 0 20px #00ffff);
+}
+:root {
+  --bg:      #03070f;
+  --panel:   #060c17;
+  --panel2:  #091020;
+  --b1:      #112030;
+  --b2:      #1a3045;
+  --geo:     #00e5cc;
+  --soc:     #ff4500;
+  --cyber:   #18eaff;
+  --alert:   #ff0033;
+  --warn:    #ffd700;
+  --dim:     #3a5570;
+  --txt:     #6a8faa;
+  --bright:  #b8d8ee;
+  --white:   #e0f0ff;
+  --scan:    rgba(24,234,255,0.04);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);}
+body{font-family:'Barlow Condensed',sans-serif;color:var(--txt);}
+
+/* ═══════════════════════════════════════
+   SCANLINE OVERLAY
+══════════════════════════════════════════ */
+body::before{
+  content:'';position:fixed;inset:0;z-index:9000;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.09) 3px,rgba(0,0,0,0.09) 4px);
+}
+/* ═══════════════════════════════════════
+   BOOT SCREEN
+══════════════════════════════════════════ */
+#boot{
+  position:fixed;inset:0;background:var(--bg);z-index:8000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+}
+.boot-classify{
+  font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:5px;
+  color:var(--alert);border:1px solid var(--alert);padding:4px 16px;margin-bottom:28px;
+  animation:flash-red 1.2s infinite;
+}
+@keyframes flash-red{0%,100%{opacity:1;}50%{opacity:0.4;}}
+.boot-logo{
+  font-family:'Share Tech Mono',monospace;font-size:62px;color:var(--cyber);
+  letter-spacing:20px;text-shadow:0 0 60px rgba(24,234,255,0.7),0 0 120px rgba(24,234,255,0.25);
+  margin-bottom:6px;
+}
+.boot-tagline{
+  font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:300;
+  letter-spacing:8px;color:var(--dim);margin-bottom:32px;text-transform:uppercase;
+}
+.boot-sep{width:480px;height:1px;background:var(--b2);margin-bottom:28px;}
+.boot-lines{
+  font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--txt);
+  width:480px;min-height:120px;line-height:2;
+}
+.boot-line{display:block;opacity:0;animation:fadeIn 0.1s forwards;}
+@keyframes fadeIn{to{opacity:1;}}
+.boot-line .ok{color:var(--geo);}
+.boot-line .warn{color:var(--warn);}
+.boot-line .err{color:var(--alert);}
+.boot-bar-wrap{
+  width:480px;height:3px;background:var(--b1);margin-top:24px;overflow:hidden;
+}
+.boot-bar{height:3px;width:0%;background:linear-gradient(90deg,var(--cyber),#fff);transition:width 0.3s ease;}
+.boot-pct{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--cyber);margin-top:8px;}
+
+/* ═══════════════════════════════════════
+   MAIN LAYOUT
+══════════════════════════════════════════ */
+#app{display:none;width:100%;height:100%;flex-direction:column;}
+#app.visible{display:flex;}
+
+/* ─── TOP BAR ─── */
+#topbar{
+  height:44px;background:rgba(3,7,15,0.97);
+  border-bottom:1px solid var(--b2);
+  display:flex;align-items:center;padding:0 16px;gap:14px;
+  flex-shrink:0;position:relative;z-index:500;
+}
+.tb-classify{
+  font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:3px;
+  color:var(--alert);border:1px solid var(--alert);padding:2px 7px;
+}
+.tb-logo{
+  font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--cyber);
+  letter-spacing:6px;text-shadow:0 0 20px rgba(24,234,255,0.6);
+}
+.tb-pipe{width:1px;height:20px;background:var(--b2);}
+.tb-label{font-size:10px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;}
+.tb-spacer{flex:1;}
+.tb-threat{
+  display:flex;align-items:center;gap:8px;
+  font-family:'Share Tech Mono',monospace;font-size:11px;
+}
+.threat-label{color:var(--dim);font-size:9px;letter-spacing:2px;}
+#threat-val{
+  font-size:13px;font-weight:700;letter-spacing:2px;padding:3px 10px;
+  border:1px solid var(--geo);color:var(--geo);transition:all 0.4s;
+}
+.tb-time{
+  font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--bright);
+  border-left:1px solid var(--b2);padding-left:14px;
+}
+/* blinking cursor */
+.cursor-blink::after{content:'_';animation:blink 1s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
+
+/* ─── HAMBURGER BUTTON ─── */
+#hamburger{
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  gap:5px;width:36px;height:36px;cursor:pointer;
+  border:1px solid var(--b2);background:transparent;padding:0;flex-shrink:0;
+  transition:border-color 0.15s, background 0.15s;
+}
+#hamburger:hover{border-color:var(--cyber);background:rgba(24,234,255,0.08);}
+#hamburger span{
+  display:block;width:18px;height:2px;background:var(--txt);
+  transition:transform 0.3s, opacity 0.3s, background 0.15s;
+  transform-origin:center;
+}
+#hamburger:hover span{background:var(--cyber);}
+/* X state when panel is open (panel NOT collapsed) */
+body.panel-open #hamburger span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+body.panel-open #hamburger span:nth-child(2){opacity:0;transform:scaleX(0);}
+body.panel-open #hamburger span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+
+/* ─── MAIN BODY ─── */
+#body{display:flex;flex:1;overflow:hidden;background:var(--bg);}
+
+/* ─── LEFT COLUMN (Map + Bottom Panel) ─── */
+#left-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ─── MAP ─── */
+#map-outer{
+  display:flex;align-items:center;justify-content:center;
+  flex:1;overflow:hidden;padding:8px;
+}
+#map-wrap{
+  position:relative;overflow:hidden;
+  width:100%;
+  height:100%;
+  border:1px solid var(--b2);
+}
+#map{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;}
+
+/* Map dark overlay brand watermark */
+#map-brand{
+  position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:4px;
+  color:rgba(24,234,255,0.28);z-index:400;pointer-events:none;
+}
+
+/* ─── BOTTOM PANEL ─── */
+#bottom-panel {
+  display: flex;
+  gap: 8px;
+  padding: 0 8px 8px 8px;
+  height: 260px; /* Fixed height for the bottom panel items */
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+#bottom-panel::-webkit-scrollbar{height:4px;}
+#bottom-panel::-webkit-scrollbar-thumb{background:var(--b2);}
+
+#bottom-panel > .sec {
+  flex: 1;
+  min-width: 300px; /* Ensures items don't squish too much */
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+#bottom-panel .sec-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#bottom-panel #hyrox-out {
+  max-height: none;
+  flex: 1;
+}
+#bottom-panel #log {
+  max-height: none;
+  flex: 1;
+}
+
+/* ─── LEGEND ─── */
+#legend{
+  position:absolute;bottom:36px;left:12px;z-index:400;
+  background:rgba(3,7,15,0.88);border:1px solid var(--b2);padding:10px 14px;
+  backdrop-filter:blur(4px);
+}
+.leg-title{font-size:8px;letter-spacing:3px;color:var(--dim);margin-bottom:8px;text-transform:uppercase;}
+.leg-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:11px;}
+.leg-dot{width:10px;height:10px;border-radius:50%;}
+
+/* ─── RIGHT PANEL ─── */
+#panel{
+  width:360px;flex-shrink:0;background:var(--panel);
+  border-left:1px solid var(--b2);
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:width 0.3s cubic-bezier(0.4,0,0.2,1);
+  position:relative;
+  min-height:0;
+  height:100%;
+}
+#panel.collapsed{width:0;border-left:none;}
+#panel.collapsed .panel-scroll{opacity:0;pointer-events:none;}
+.panel-scroll{flex:1;overflow-y:auto;padding:12px;transition:opacity 0.2s;min-height:0;}
+.panel-scroll::-webkit-scrollbar{width:3px;}
+.panel-scroll::-webkit-scrollbar-thumb{background:var(--b2);}
+
+/* Sidebar toggle tab — hidden, replaced by topbar hamburger */
+#panel-toggle{display:none;}
+#panel-toggle:hover{background:rgba(24,234,255,0.1);color:var(--bright);}
+#panel-toggle .tgl-arrow{display:inline-block;transition:transform 0.3s;}
+#panel.collapsed #panel-toggle{left:-22px;}
+#panel.collapsed .tgl-arrow{transform:rotate(180deg);}
+
+/* ─── PANEL SECTIONS ─── */
+.sec{border:1px solid var(--b2);margin-bottom:10px;}
+.sec-head{
+  background:var(--panel2);padding:8px 12px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--b2);
+}
+.sec-title{
+  font-size:8px;letter-spacing:3px;text-transform:uppercase;font-weight:700;
+  display:flex;align-items:center;gap:8px;
+}
+.dot-geo{width:7px;height:7px;border-radius:50%;background:var(--geo);box-shadow:0 0 6px var(--geo);}
+.dot-soc{width:7px;height:7px;border-radius:50%;background:var(--soc);box-shadow:0 0 6px var(--soc);}
+.dot-cyber{width:7px;height:7px;border-radius:50%;background:var(--cyber);box-shadow:0 0 6px var(--cyber);}
+.dot-alert{width:7px;height:7px;border-radius:50%;background:var(--alert);box-shadow:0 0 6px var(--alert);animation:pulse-red 1s infinite;}
+@keyframes pulse-red{0%,100%{transform:scale(1);}50%{transform:scale(1.4);}}
+@keyframes pulse-cyber{0%,100%{transform:scale(1);box-shadow:0 0 0 rgba(0,212,255,0);}50%{transform:scale(1.5);box-shadow:0 0 8px rgba(0,212,255,0.8);}}
+.sec-count{
+  font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--bright);
+}
+.sec-body{padding:10px 12px;}
+
+/* ─── SLIDERS ─── */
+.sl-wrap{margin-bottom:8px;}
+.sl-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.sl-name{font-size:11px;letter-spacing:1px;color:var(--txt);}
+.sl-num{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--bright);}
+input[type=range]{
+  width:100%;-webkit-appearance:none;appearance:none;height:2px;outline:none;cursor:pointer;
+  background:var(--b2);border-radius:0;
+}
+input[type=range].geo-sl::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;
+  background:var(--geo);border-radius:0;cursor:pointer;
+  box-shadow:0 0 10px var(--geo);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+}
+input[type=range].soc-sl::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;
+  background:var(--soc);border-radius:50%;cursor:pointer;
+  box-shadow:0 0 10px var(--soc);
+}
+input[type=range].cyber-sl::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;
+  background:var(--cyber);border-radius:0;cursor:pointer;
+  box-shadow:0 0 10px var(--cyber);transform:rotate(45deg);
+}
+input[type=range].geo-sl{background:linear-gradient(to right,var(--geo) 0%,var(--geo) var(--val,50%),var(--b2) var(--val,50%));}
+input[type=range].soc-sl{background:linear-gradient(to right,var(--soc) 0%,var(--soc) var(--val,50%),var(--b2) var(--val,50%));}
+input[type=range].cyber-sl{background:linear-gradient(to right,var(--cyber) 0%,var(--cyber) var(--val,50%),var(--b2) var(--val,50%));}
+
+/* ─── REGION SELECTOR ─── */
+.region-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:0;}
+.rbtn{
+  padding:8px 6px;border:1px solid var(--b2);background:transparent;
+  color:var(--txt);font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+  cursor:pointer;transition:all 0.15s;text-align:center;
+}
+.rbtn:hover{border-color:var(--cyber);color:var(--bright);}
+.rbtn.active{background:rgba(24,234,255,0.12);border-color:var(--cyber);color:var(--cyber);}
+
+/* ─── SCENARIO BUTTONS ─── */
+.sc-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.sc-btn{
+  padding:8px 8px;border:1px solid var(--b2);background:transparent;
+  color:var(--txt);font-family:'Barlow Condensed',sans-serif;
+  font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
+  cursor:pointer;transition:all 0.15s;text-align:left;display:flex;align-items:center;gap:6px;
+}
+.sc-btn:hover{background:rgba(255,36,71,0.08);border-color:var(--alert);color:var(--alert);}
+.sc-btn.active-sc{background:rgba(255,36,71,0.12);border-color:var(--alert);color:var(--alert);animation:sc-pulse 1.5s infinite;}
+@keyframes sc-pulse{0%,100%{box-shadow:0 0 0 rgba(255,36,71,0);}50%{box-shadow:0 0 12px rgba(255,36,71,0.3);}}
+.sc-icon{font-size:14px;line-height:1;}
+
+/* ─── INTEL LOG ─── */
+#log{
+  font-family:'Share Tech Mono',monospace;font-size:9px;line-height:1.85;
+  overflow-y:auto;color:var(--txt);
+}
+#log::-webkit-scrollbar{width:2px;}
+#log::-webkit-scrollbar-thumb{background:var(--b2);}
+.lg{display:block;}
+.lg-geo{color:var(--geo);}
+.lg-soc{color:var(--soc);}
+.lg-cyber{color:var(--cyber);}
+.lg-alert{color:var(--alert);}
+.lg-sys{color:var(--dim);}
+
+/* ─── HYROX OUTPUT ─── */
+.hyrox-endpoint{
+  display:flex;gap:6px;margin-bottom:8px;
+}
+.hyrox-url{
+  flex:1;background:var(--bg);border:1px solid var(--b2);
+  color:var(--txt);padding:7px 10px;
+  font-family:'Share Tech Mono',monospace;font-size:10px;outline:none;
+}
+.hyrox-url::placeholder{color:var(--b2);}
+#hyrox-send{
+  padding:0 12px;background:var(--cyber);color:#03070f;
+  border:none;font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;font-weight:700;letter-spacing:1.5px;cursor:pointer;
+  transition:opacity 0.15s;
+}
+#hyrox-send:hover{opacity:0.8;}
+#hyrox-out{
+  font-family:'Share Tech Mono',monospace;font-size:9.5px;line-height:1.8;
+  color:var(--bright);overflow-y:auto;
+  border:1px solid var(--b2);padding:10px;background:var(--bg);
+  white-space:pre-wrap;
+}
+#hyrox-out::-webkit-scrollbar{width:2px;}
+#hyrox-out::-webkit-scrollbar-thumb{background:var(--b2);}
+.hx-label{color:var(--cyber);}
+.hx-alert{color:var(--alert);}
+.hx-warn{color:var(--warn);}
+.hx-ok{color:var(--geo);}
+
+/* ─── ACTION BUTTONS ─── */
+.action-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;}
+.act-btn{
+  padding:9px 8px;border:none;cursor:pointer;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  transition:all 0.15s;
+}
+.act-btn:hover{opacity:0.82;transform:translateY(-1px);}
+.btn-cyan{background:var(--cyber);color:#03070f;}
+.btn-red{background:var(--alert);color:#fff;}
+.btn-outline{background:transparent;border:1px solid var(--dim);color:var(--txt);}
+.btn-outline:hover{border-color:var(--bright);color:var(--bright);}
+
+/* ─── STATS BAR ─── */
+#statsbar{
+  height:36px;background:var(--panel);border-top:1px solid var(--b2);
+  display:flex;align-items:center;padding:0 20px;gap:28px;flex-shrink:0;
+}
+.stat-item{display:flex;align-items:center;gap:8px;}
+.stat-label{font-size:8px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;}
+.stat-val{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--bright);}
+.stat-geo{color:var(--geo);}
+.stat-soc{color:var(--soc);}
+.stat-cyber{color:var(--cyber);}
+.stat-sep{width:1px;height:18px;background:var(--b2);}
+
+/* ═══════════════════════════════════════
+   LEAFLET CUSTOM MARKERS
+══════════════════════════════════════════ */
+.geo-marker-wrap{position:relative;}
+.geo-dot{
+  width:16px;height:16px;background:var(--geo);
+  clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+  filter:drop-shadow(0 0 6px var(--geo)) drop-shadow(0 0 3px rgba(255,255,255,0.9));
+  transition:all 0.5s;
+}
+.geo-dot.tank{background:#00e5cc;width:18px;height:18px;filter:drop-shadow(0 0 8px #00e5cc) drop-shadow(0 0 3px #fff);}
+.geo-dot.troop{background:#00e5cc;width:13px;height:13px;filter:drop-shadow(0 0 6px #00e5cc) drop-shadow(0 0 2px #fff);}
+.geo-dot.drone{background:#00e5cc;width:12px;height:12px;border-radius:50%;filter:drop-shadow(0 0 7px #00e5cc) drop-shadow(0 0 2px #fff);}
+.geo-dot.vehicle{background:#00e5cc;width:15px;height:15px;filter:drop-shadow(0 0 7px #00e5cc) drop-shadow(0 0 3px #fff);}
+
+.soc-dot{
+  width:17px;height:17px;border-radius:50%;background:var(--soc);
+  filter:drop-shadow(0 0 7px var(--soc)) drop-shadow(0 0 3px rgba(255,255,255,0.85));
+  animation:soc-pulse 2s infinite;
+}
+@keyframes soc-pulse{
+  0%,100%{transform:scale(1);}
+  50%{transform:scale(1.4);}
+}
+
+.cyber-wrap{position:relative;}
+.cyber-dot{
+  width:18px;height:18px;
+  border:2.5px solid var(--cyber);
+  background:rgba(24,234,255,0.25);
+  filter:drop-shadow(0 0 7px var(--cyber)) drop-shadow(0 0 3px rgba(255,255,255,0.8));
+  animation:cyber-spin 3s linear infinite;
+}
+@keyframes cyber-spin{to{transform:rotate(360deg);}}
+.cyber-ring{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:36px;height:36px;
+  border:1px solid rgba(24,234,255,0.45);
+  border-radius:50%;
+  animation:cyber-ring-expand 1.5s infinite;
+}
+@keyframes cyber-ring-expand{
+  0%{width:18px;height:18px;opacity:1;}
+  100%{width:54px;height:54px;opacity:0;}
+}
+
+/* ─── LEAFLET POPUP ─── */
+.leaflet-popup-content-wrapper{
+  background:rgba(3,7,15,0.95)!important;
+  border:1px solid var(--b2)!important;
+  border-radius:0!important;
+  box-shadow:0 0 20px rgba(0,0,0,0.6)!important;
+  color:var(--bright)!important;
+  font-family:'Barlow Condensed',sans-serif!important;
+  font-size:13px!important;
+  backdrop-filter:blur(6px)!important;
+}
+.leaflet-popup-tip{background:var(--panel)!important;}
+.leaflet-popup-content{margin:10px 14px!important;}
+.popup-header{
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:3px;
+  margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--b2);
+}
+.popup-soc .popup-header{color:var(--soc);}
+.popup-geo .popup-header{color:var(--geo);}
+.popup-cyber .popup-header{color:var(--cyber);}
+.popup-row{display:flex;gap:8px;margin-top:4px;font-size:12px;}
+.popup-key{color:var(--dim);min-width:60px;}
+.popup-val{color:var(--white);}
+.popup-sev-high{color:var(--alert)!important;}
+.popup-sev-med{color:var(--warn)!important;}
+.popup-sev-low{color:var(--geo)!important;}
+
+/* threat level colors */
+.threat-low{border-color:var(--geo)!important;color:var(--geo)!important;}
+.threat-mod{border-color:var(--warn)!important;color:var(--warn)!important;}
+.threat-high{border-color:var(--soc)!important;color:var(--soc)!important;}
+.threat-crit{border-color:var(--alert)!important;color:var(--alert)!important;animation:flash-red 0.7s infinite!important;}
+
+/* ─── MAP LAYER TOGGLE ─── */
+#map-toggle{
+  position:absolute;top:12px;left:12px;z-index:400;
+  display:flex;gap:0;background:rgba(3,7,15,0.88);
+  border:1px solid var(--b2);backdrop-filter:blur(4px);overflow:hidden;
+}
+.maptgl{
+  padding:7px 12px;border:none;background:transparent;
+  color:var(--txt);font-family:'Share Tech Mono',monospace;
+  font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  cursor:pointer;border-right:1px solid var(--b2);transition:all 0.15s;
+}
+.maptgl:last-child{border-right:none;}
+.maptgl:hover{color:var(--bright);background:rgba(24,234,255,0.09);}
+.maptgl.active{background:rgba(24,234,255,0.18);color:var(--cyber);}
+
+/* ─── FULLSCREEN BUTTON ─── */
+#btn-fullscreen{
+  position:absolute;top:12px;right:12px;z-index:400;
+  width:34px;height:34px;
+  background:rgba(3,7,15,0.88);border:1px solid var(--b2);
+  backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--txt);font-size:14px;
+  transition:all 0.15s;
+}
+#btn-fullscreen:hover{color:var(--cyber);border-color:var(--cyber);background:rgba(24,234,255,0.1);}
+/* Fullscreen: hide topbar/statsbar */
+#map-wrap:-webkit-full-screen{width:100vw!important;height:100vh!important;aspect-ratio:unset!important;}
+#map-wrap:-moz-full-screen{width:100vw!important;height:100vh!important;aspect-ratio:unset!important;}
+#map-wrap:fullscreen{width:100vw!important;height:100vh!important;aspect-ratio:unset!important;}
+</style>
+</head>
+<body class="panel-open">
+
+<!-- ══════════ BOOT SCREEN ══════════ -->
+<div id="boot">
+  <div class="boot-classify">TOP SECRET // SCI // NOFORN</div>
+  <div class="boot-logo">HYROX</div>
+  <div class="boot-tagline">Tri-Domain Intelligence Fusion &nbsp;·&nbsp; v4.1.2 &nbsp;·&nbsp; CLASSIFIED</div>
+  <div class="boot-sep"></div>
+  <div class="boot-lines" id="boot-lines"></div>
+  <div class="boot-bar-wrap"><div class="boot-bar" id="boot-bar"></div></div>
+  <div class="boot-pct" id="boot-pct">0%</div>
+</div>
+
+<!-- ══════════ MAIN APP ══════════ -->
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <div class="tb-classify">TS//SCI</div>
+    <div class="tb-logo">HYROX</div>
+    <div class="tb-pipe"></div>
+    <div class="tb-label">AI Hybrid Warfare Intelligence System</div>
+    <div class="tb-spacer"></div>
+    <div class="tb-threat">
+      <span class="threat-label">THREAT LEVEL</span>
+      <span id="threat-val" class="threat-low">LOW</span>
+    </div>
+    <div class="tb-pipe"></div>
+    <div class="tb-label" style="color:var(--geo);" id="sim-status">● SIMULATION ACTIVE</div>
+    <div class="tb-pipe"></div>
+    <div class="tb-time cursor-blink" id="clock"></div>
+    <div class="tb-pipe"></div>
+    <button id="hamburger" onclick="togglePanel()" title="Toggle Sidebar" aria-label="Toggle Sidebar">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <!-- BODY -->
+  <div id="body">
+
+    <!-- LEFT COLUMN -->
+    <div id="left-column">
+      
+      <!-- MAP OUTER -->
+      <div id="map-outer">
+        <div id="map-wrap">
+          <div id="map"></div>
+          <div id="map-brand">HYROX // GEOSPATIAL LAYER // CLASSIFIED</div>
+
+          <!-- MAP LAYER TOGGLE -->
+          <div id="map-toggle">
+            <button class="maptgl active" onclick="setMapLayer('dark')" id="tgl-dark">◼ Dark</button>
+            <button class="maptgl" onclick="setMapLayer('terrain')" id="tgl-terrain">⛰ Terrain</button>
+            <button class="maptgl" onclick="setMapLayer('satellite')" id="tgl-satellite">🛰 Satellite</button>
+          </div>
+
+          <!-- FULLSCREEN BUTTON -->
+          <div id="btn-fullscreen" onclick="toggleFullscreen()" title="Fullscreen">⛶</div>
+
+          <!-- LEGEND -->
+          <div id="legend">
+            <div class="leg-title">Intel Layers</div>
+            <div class="leg-row"><div class="leg-dot" style="background:var(--geo);box-shadow:0 0 6px var(--geo);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);border-radius:0;"></div><span style="font-size:11px;">GEOINT — Unit Movement</span></div>
+            <div class="leg-row"><div class="leg-dot" style="background:var(--soc);box-shadow:0 0 6px var(--soc);"></div><span style="font-size:11px;">SOCINT — Social Alerts</span></div>
+            <div class="leg-row"><div class="leg-dot" style="background:var(--cyber);box-shadow:0 0 6px var(--cyber);border-radius:0;transform:rotate(45deg);width:9px;height:9px;"></div><span style="font-size:11px;">CYBERINT — Network Events</span></div>
+          </div>
+        </div>
+      </div><!-- end map-outer -->
+
+      <!-- BOTTOM PANEL -->
+      <div id="bottom-panel">
+
+        <!-- JUDGE SCENARIOS -->
+        <div class="sec">
+          <div class="sec-head">
+            <span class="sec-title"><span class="dot-alert"></span>Judge Scenarios</span>
+          </div>
+          <div class="sec-body">
+            <div class="sc-grid">
+              <button class="sc-btn" onclick="triggerScenario('troop_buildup')" id="sc-troop_buildup"><span class="sc-icon">🪖</span>Troop Buildup</button>
+              <button class="sc-btn" onclick="triggerScenario('cyber_attack')" id="sc-cyber_attack"><span class="sc-icon">💻</span>Cyber Attack</button>
+              <button class="sc-btn" onclick="triggerScenario('aerial_incursion')" id="sc-aerial_incursion"><span class="sc-icon">✈️</span>Aerial Incursion</button>
+              <button class="sc-btn" onclick="triggerScenario('civilian_unrest')" id="sc-civilian_unrest"><span class="sc-icon">📢</span>Civilian Unrest</button>
+              <button class="sc-btn" onclick="triggerScenario('comms_blackout')" id="sc-comms_blackout"><span class="sc-icon">📡</span>Comms Blackout</button>
+              <button class="sc-btn" onclick="triggerScenario('border_firing')" id="sc-border_firing"><span class="sc-icon">💥</span>Border Firing</button>
+              <button class="sc-btn" onclick="triggerScenario('intel_breach')" id="sc-intel_breach"><span class="sc-icon">🔓</span>Intel Breach</button>
+              <button class="sc-btn" onclick="triggerScenario('full_escalation')" id="sc-full_escalation"><span class="sc-icon">⚠️</span>Full Escalation</button>
+            </div>
+            
+            <div style="margin-top:8px; display:flex; gap:6px;">
+              <button class="act-btn btn-outline" style="flex:1; margin-top:0;" onclick="clearAllScenarios()">CLEAR SCENARIOS</button>
+              <button class="act-btn btn-outline" style="flex:1; margin-top:0;" onclick="resetSimulation()">RESET SIM</button>
+            </div>
+            <div style="margin-top:6px;">
+              <button class="act-btn btn-outline" style="width:100%; border-color:var(--warn); color:var(--warn);" id="btn-autosim" onclick="toggleAutoSim()">AUTO-SIM: OFF</button>
+              <div style="margin-top:6px;">
+            </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HYROX OUTPUT -->
+        <div class="sec">
+          <div class="sec-head">
+            <span class="sec-title" style="color:var(--cyber);">HYROX MODEL INPUT/OUTPUT</span>
+          </div>
+          <div class="sec-body">
+            <div class="hyrox-endpoint">
+              <input class="hyrox-url" id="hyrox-url" placeholder="http://your-hyrox-api/analyze" type="text" value="http://localhost:5050/api/hyrox/ingest"/>
+              <button id="hyrox-send" onclick="sendToHyrox()">SEND</button>
+            </div>
+            <div id="hyrox-out"><span style="color:var(--dim);font-size:9px;">// Awaiting simulation data dispatch to Hyrox model...<br>// Configure endpoint URL above and press SEND<br>// Payload auto-built from live simulation state</span></div>
+            <div class="action-row">
+              <button class="act-btn btn-cyan" onclick="sendToHyrox()">↑ DISPATCH</button>
+              <button class="act-btn btn-outline" onclick="copyPayload()">COPY JSON</button>
+            </div>
+            <div style="margin-top:6px;">
+              <button class="act-btn btn-outline" id="btn-autodispatch"
+                style="width:100%;border-color:var(--cyber);color:var(--cyber);"
+                onclick="toggleAutoDispatch()">AUTO-DISPATCH: OFF</button>
+              <div style="font-size:9px;color:var(--dim);margin-top:4px;font-family:'Share Tech Mono',monospace;">
+                Sends payload every 5s automatically
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INTEL LOG -->
+        <div class="sec">
+          <div class="sec-head">
+            <span class="sec-title">Intel Feed</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);cursor:pointer;" onclick="clearLog()">CLEAR</span>
+          </div>
+          <div class="sec-body" style="padding-top:6px;">
+            <div id="log"></div>
+          </div>
+        </div>
+
+      </div><!-- end bottom-panel -->
+    </div><!-- end left-column -->
+
+    <!-- RIGHT PANEL (Parameters) -->
+    <div id="panel">
+      <div id="panel-toggle" onclick="togglePanel()" title="Toggle Sidebar"><span class="tgl-arrow">‹</span></div>
+      <div class="panel-scroll">
+
+        <!-- REGION SELECTOR -->
+        <div class="sec">
+          <div class="sec-head">
+            <span class="sec-title">Border Region</span>
+          </div>
+          <div class="sec-body">
+            <div class="region-btns" id="region-btns-grid">
+              <button class="rbtn active" id="rbtn-india-pak" onclick="setRegion('india-pak')">India–Pakistan<br><span style="font-size:9px;opacity:0.6;letter-spacing:1px;">LOC / Rajasthan</span></button>
+              <button class="rbtn" id="rbtn-india-china" onclick="setRegion('india-china')">India–China<br><span style="font-size:9px;opacity:0.6;letter-spacing:1px;">LAC / Ladakh</span></button>
+              <button class="rbtn" id="rbtn-india-bangladesh" onclick="setRegion('india-bangladesh')">India–Bangladesh<br><span style="font-size:9px;opacity:0.6;">Eastern Border</span></button>
+              <button class="rbtn" id="rbtn-india-arunachal" onclick="setRegion('india-arunachal')">India–China<br><span style="font-size:9px;opacity:0.6;">Arunachal Border</span></button>
+            </div>
+
+            <!-- AUTO-CYCLE REGION CONTROL -->
+            <div style="margin-top:8px;">
+              <button class="act-btn btn-outline" id="btn-autocycle" onclick="toggleAutoCycle()"
+                style="width:100%;border-color:var(--cyber);color:var(--cyber);display:flex;align-items:center;justify-content:space-between;padding:9px 10px;">
+                <span style="display:flex;align-items:center;gap:7px;">
+                  <span id="autocycle-dot" style="width:7px;height:7px;border-radius:50%;background:var(--dim);display:inline-block;flex-shrink:0;"></span>
+                  <span id="autocycle-label">AUTO-CYCLE REGIONS: OFF</span>
+                </span>
+                <span id="autocycle-timer" style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);">—</span>
+              </button>
+            </div>
+
+            <!-- CYCLE PROGRESS BAR -->
+            <div id="autocycle-bar-wrap" style="height:2px;background:var(--b1);margin-top:4px;display:none;overflow:hidden;">
+              <div id="autocycle-bar" style="height:2px;width:0%;background:linear-gradient(90deg,var(--cyber),#fff);transition:width 1s linear;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GEOINT CONTROL -->
+        <div class="sec">
+          <div class="sec-head">
+            <span class="sec-title"><span class="dot-geo"></span>GEOINT</span>
+            <span class="sec-count" id="geo-count">0 units</span>
+          </div>
+          <div class="sec-body">
+            <div class="sl-wrap">
+              <div class="sl-top"><span class="sl-name">Tanks / AFV</span><span class="sl-num" id="v-tanks">3</span></div>
+              <input type="range" class="geo-sl" min="0" max="12" value="3" id="sl-tanks" oninput="updateSlider(this,'v-tanks');rebuildGeo()">
+            </div>
+            <div class="sl-wrap">
+              <div class="sl-top"><span class="sl-name">Troops</span><span class="sl-num" id="v-troops">5</span></div>
+              <input type="range" class="geo-sl" min="0" max="20" value="5" id="sl-troops" oninput="updateSlider(this,'v-troops');rebuildGeo()">
+            </div>
+            <div class="sl-wrap">
+              <div class="sl-top"><span class="sl-name">Drones</span><span class="sl-num" id="v-drones">2</span></div>
+              <input type="range" class="geo-sl" min="0" max="10" value="2" id="sl-drones" oninput="updateSlider(this,'v-drones');rebuildGeo()">
+            </div>
+            <div class="sl-wrap">
+              <div class="sl-top"><span class="sl-name">Vehicles</span><span class="sl-num" id="v-vehicles">4</span></div>
+              <input type="range" class="geo-sl" min="0" max="15" value="4" id="sl-vehicles" oninput="updateSlider(this,'v-vehicles');rebuildGeo()">
+            </div>
+          </div>
+        </div>
+
+        <!-- SOCINT CONTROL -->
+        <div class="sec">
+          <div class="sec-head">
+            <span class="sec-title"><span class="dot-soc"></span>SOCINT</span>
+            <span class="sec-count" id="soc-count">0 alerts</span>
+          </div>
+          <div class="sec-body">
+            <div class="sl-wrap">
+              <div class="sl-top"><span class="sl-name">Protests</span><span class="sl-num" id="v-protests">2</span></div>
+              <input type="range" class="soc-sl" min="0" max="10" value="2" id="sl-protests" oninput="updateSlider(this,'v-protests');rebuildSoc()">
+            </div>
+            <div class="sl-wrap">
+              <div class="sl-top"><span class="sl-name">Propaganda</span><span class="sl-num" id="v-prop">1</span></div>
+              <input type="range" class="soc-sl" min="0" max="8" value="1" id="sl-prop" oninput="updateSlider(this,'v-prop');rebuildSoc()">
+            </div>
+            <div class="sl-wrap">
+              <div class="sl-top"><span class="sl-name">Informants</span><span class="sl-num" id="v-info">3</span></div>
+              <input type="range" class="soc-sl" min="0" max="10" value="3" id="sl-info" oninput="updateSlider(this,'v-info');rebuildSoc()">
+            </div>
+          </div>
+        </div>
+
+        <!-- CYBERINT CONTROL -->
+        <div class="sec">
+          <div class="sec-head">
+            <span class="sec-title"><span class="dot-cyber"></span>CYBERINT</span>
+            <span class="sec-count" id="cyber-count">0 events</span>
+          </div>
+          <div class="sec-body">
+            <div class="sl-wrap">
+              <div class="sl-top"><span class="sl-name">Intrusions</span><span class="sl-num" id="v-intr">2</span></div>
+              <input type="range" class="cyber-sl" min="0" max="8" value="2" id="sl-intr" oninput="updateSlider(this,'v-intr');rebuildCyber()">
+            </div>
+            <div class="sl-wrap">
+              <div class="sl-top"><span class="sl-name">Jamming Nodes</span><span class="sl-num" id="v-jam">1</span></div>
+              <input type="range" class="cyber-sl" min="0" max="6" value="1" id="sl-jam" oninput="updateSlider(this,'v-jam');rebuildCyber()">
+            </div>
+            <div class="sl-wrap">
+              <div class="sl-top"><span class="sl-name">Malware Events</span><span class="sl-num" id="v-mal">1</span></div>
+              <input type="range" class="cyber-sl" min="0" max="6" value="1" id="sl-mal" oninput="updateSlider(this,'v-mal');rebuildCyber()">
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end panel-scroll -->
+    </div><!-- end panel -->
+  </div><!-- end body -->
+
+  <!-- STATS BAR -->
+  <div id="statsbar">
+    <div class="stat-item"><span class="stat-label">Region</span><span class="stat-val" id="stat-region">IND–PAK / LOC</span></div>
+    <div class="stat-sep"></div>
+    <div class="stat-item"><span class="stat-label">Geo Units</span><span class="stat-val stat-geo" id="stat-geo">14</span></div>
+    <div class="stat-sep"></div>
+    <div class="stat-item"><span class="stat-label">Soc Alerts</span><span class="stat-val stat-soc" id="stat-soc">6</span></div>
+    <div class="stat-sep"></div>
+    <div class="stat-item"><span class="stat-label">Cyber Events</span><span class="stat-val stat-cyber" id="stat-cyber">4</span></div>
+    <div class="stat-sep"></div>
+    <div class="stat-item"><span class="stat-label">Active Scenarios</span><span class="stat-val" id="stat-sc">0</span></div>
+    <div class="stat-sep"></div>
+    <div class="stat-item"><span class="stat-label">Last Dispatch</span><span class="stat-val" id="stat-dispatch" style="font-size:10px;">—</span></div>
+  </div>
+
+</div><!-- end app -->
+
+<script>
+// ═══════════════════════════════════════
+//   BOOT SEQUENCE
+// ═══════════════════════════════════════
+const bootLines = [
+  {t:200,  txt:'SYSTEM INITIALIZATION...', cls:''},
+  {t:450,  txt:'Loading geospatial kernel... <span class="ok">[OK]</span>', cls:''},
+  {t:700,  txt:'Mounting social intelligence module... <span class="ok">[OK]</span>', cls:''},
+  {t:950,  txt:'Activating cyber threat detection... <span class="ok">[OK]</span>', cls:''},
+  {t:1200, txt:'Calibrating India-Pakistan LOC coordinates... <span class="ok">[OK]</span>', cls:''},
+  {t:1400, txt:'Calibrating India-China LAC coordinates... <span class="ok">[OK]</span>', cls:''},
+  {t:1650, txt:'Establishing secure comms channel... <span class="warn">[ENCRYPTED]</span>', cls:''},
+  {t:1900, txt:'Loading classified border intelligence DB... <span class="ok">[OK]</span>', cls:''},
+  {t:2100, txt:'Hyrox fusion engine ready... <span class="ok">[STANDBY]</span>', cls:''},
+  {t:2300, txt:'All systems nominal. Launching interface...', cls:''},
+];
+const barSteps = [0,10,20,35,50,60,70,80,90,100];
+
+function runBoot(){
+  const lines = document.getElementById('boot-lines');
+  const bar = document.getElementById('boot-bar');
+  const pct = document.getElementById('boot-pct');
+  bootLines.forEach((l,i)=>{
+    setTimeout(()=>{
+      const s = document.createElement('span');
+      s.className='boot-line';
+      s.innerHTML = '> '+l.txt;
+      lines.appendChild(s);
+      bar.style.width = barSteps[i]+'%';
+      pct.textContent = barSteps[i]+'%';
+      lines.scrollTop = lines.scrollHeight;
+    }, l.t);
+  });
+  setTimeout(()=>{
+    bar.style.width='100%';
+    pct.textContent='100%';
+  }, 2500);
+  setTimeout(()=>{
+    const boot = document.getElementById('boot');
+    boot.style.opacity='0';
+    boot.style.transition='opacity 0.8s';
+    setTimeout(()=>{
+      boot.style.display='none';
+      document.getElementById('app').classList.add('visible');
+      initApp();
+    }, 900);
+  }, 2900);
+}
+runBoot();
+
+// ═══════════════════════════════════════
+//   CLOCK
+// ═══════════════════════════════════════
+function updateClock(){
+  const now = new Date();
+  const hh = String(now.getUTCHours()).padStart(2,'0');
+  const mm = String(now.getUTCMinutes()).padStart(2,'0');
+  const ss = String(now.getUTCSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${hh}:${mm}:${ss} UTC`;
+}
+setInterval(updateClock,1000);
+
+// ═══════════════════════════════════════
+//   MAP SETUP
+// ═══════════════════════════════════════
+let map, currentRegion = 'india-pak';
+
+const REGIONS = {
+  'india-pak': {
+    label:'IND–PAK / LOC',
+    center:[30.5,73.0],
+    zoom:7,
+    // LOC rough bounding box for unit spawning
+    latMin:28.5, latMax:32.5, lngMin:70.5, lngMax:75.5,
+    name:'India–Pakistan LoC',
+  },
+  'india-china': {
+    label:'IND–CHN / LAC',
+    center:[33.8,78.5],
+    zoom:7,
+    latMin:32.0, latMax:35.5, lngMin:76.0, lngMax:81.0,
+    name:'India–China LAC',
+  },
+  'india-bangladesh': {
+  label:'IND–BAN / BORDER',
+  center:[24.5, 90.5],
+  zoom:6,
+  latMin:22,
+  latMax:27,
+  lngMin:88,
+  lngMax:92,
+  name:'India–Bangladesh Border'
+},
+'india-arunachal': {
+  label:'IND–CHN / ARUNACHAL',
+  center:[28.5, 94.5],
+  zoom:6,
+  latMin:26,
+  latMax:30,
+  lngMin:91,
+  lngMax:97,
+  name:'India–Arunachal Pradesh'
+},
+};
+
+
+function initApp(){
+
+
+  // Init map - full India first
+  map = L.map('map', {
+    zoomControl:false,
+    attributionControl:false,
+  }).setView([22,80], 5);
+
+  const TILE_LAYERS = {
+    dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains:'abcd', maxZoom:18
+    }),
+    terrain: L.tileLayer('https://tile.opentopomap.org/{z}/{x}/{y}.png', {
+      maxZoom:17
+    }),
+    satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom:19
+    })
+  };
+  let currentLayer = 'dark';
+  TILE_LAYERS.dark.addTo(map);
+ 
+  window.setMapLayer = function(key){
+    if(key === currentLayer) return;
+    map.removeLayer(TILE_LAYERS[currentLayer]);
+    TILE_LAYERS[key].addTo(map);
+    currentLayer = key;
+    document.querySelectorAll('.maptgl').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tgl-'+key).classList.add('active');
+    addLog('sys','Map layer switched to: '+key.toUpperCase());
+  };
+
+  setTimeout(()=>{
+    flyToRegion(currentRegion, true);
+  }, 800);
+
+  updateClock();
+  rebuildGeo();
+  rebuildSoc();
+  rebuildCyber();
+  startAnimationLoop();
+  startLogFeed();
+}
+
+function flyToRegion(key, first){
+  const r = REGIONS[key];
+  if(first){
+    map.flyTo(r.center, r.zoom, {duration:2.5, easeLinearity:0.25});
+  } else {
+    map.flyTo([22,80], 4, {duration:1.2, easeLinearity:0.4});
+    setTimeout(()=>{
+      map.flyTo(r.center, r.zoom, {duration:2.0, easeLinearity:0.25});
+    }, 1500);
+  }
+  document.getElementById('stat-region').textContent = r.label;
+}
+
+function setRegion(key, silent){
+  currentRegion = key;
+  document.querySelectorAll('.rbtn').forEach(b=>b.classList.remove('active'));
+  const activeBtn = document.getElementById('rbtn-'+key);
+  if(activeBtn) activeBtn.classList.add('active');
+  flyToRegion(key, false);
+  setTimeout(()=>{
+    rebuildGeo();
+    rebuildSoc();
+    rebuildCyber();
+    if(!silent) addLog('sys','Region switched to: '+REGIONS[key].name);
+  }, 2800);
+}
+
+// ═══════════════════════════════════════
+//   AUTO-CYCLE REGIONS
+// ═══════════════════════════════════════
+const REGION_CYCLE_ORDER = ['india-pak','india-china','india-bangladesh','india-arunachal'];
+let autoCycleInterval = null;
+let autoCycleCountdown = null;
+let autoCycleSecondsLeft = 15;
+const AUTOCYCLE_DURATION = 15; // seconds
+
+function toggleAutoCycle(){
+  const btn = document.getElementById('btn-autocycle');
+  const dot = document.getElementById('autocycle-dot');
+  const label = document.getElementById('autocycle-label');
+  const timer = document.getElementById('autocycle-timer');
+  const barWrap = document.getElementById('autocycle-bar-wrap');
+
+  if(autoCycleInterval){
+    // STOP
+    clearInterval(autoCycleInterval);
+    clearInterval(autoCycleCountdown);
+    autoCycleInterval = null;
+    autoCycleCountdown = null;
+    btn.style.borderColor = 'var(--cyber)';
+    btn.style.color = 'var(--cyber)';
+    btn.style.background = 'transparent';
+    dot.style.background = 'var(--dim)';
+    dot.style.animation = '';
+    label.textContent = 'AUTO-CYCLE REGIONS: OFF';
+    timer.textContent = '—';
+    timer.style.color = 'var(--dim)';
+    barWrap.style.display = 'none';
+    document.getElementById('autocycle-bar').style.width = '0%';
+    addLog('sys','Auto-cycle regions disabled.');
+  } else {
+    // START
+    btn.style.borderColor = 'var(--cyber)';
+    btn.style.color = 'var(--bright)';
+    btn.style.background = 'rgba(0,212,255,0.1)';
+    dot.style.background = 'var(--cyber)';
+    dot.style.animation = 'pulse-cyber 1s infinite';
+    label.textContent = 'AUTO-CYCLE REGIONS: ON';
+    timer.style.color = 'var(--cyber)';
+    barWrap.style.display = 'block';
+
+    autoCycleSecondsLeft = AUTOCYCLE_DURATION;
+    startCycleCountdown();
+    addLog('sys','Auto-cycle regions enabled — rotating every '+AUTOCYCLE_DURATION+'s');
+
+    autoCycleInterval = setInterval(()=>{
+      const idx = REGION_CYCLE_ORDER.indexOf(currentRegion);
+      const nextIdx = (idx + 1) % REGION_CYCLE_ORDER.length;
+      const nextKey = REGION_CYCLE_ORDER[nextIdx];
+      addLog('sys','Auto-cycle → switching to: '+REGIONS[nextKey].name);
+      setRegion(nextKey, true);
+      // reset countdown
+      autoCycleSecondsLeft = AUTOCYCLE_DURATION;
+    }, AUTOCYCLE_DURATION * 1000);
+  }
+}
+
+function startCycleCountdown(){
+  const timer = document.getElementById('autocycle-timer');
+  const bar = document.getElementById('autocycle-bar');
+
+  // set initial bar
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  setTimeout(()=>{
+    bar.style.transition = 'width '+AUTOCYCLE_DURATION+'s linear';
+    bar.style.width = '0%';
+  }, 50);
+
+  timer.textContent = autoCycleSecondsLeft+'s';
+
+  clearInterval(autoCycleCountdown);
+  autoCycleCountdown = setInterval(()=>{
+    if(!autoCycleInterval){ clearInterval(autoCycleCountdown); return; }
+    autoCycleSecondsLeft--;
+    if(autoCycleSecondsLeft <= 0){
+      autoCycleSecondsLeft = AUTOCYCLE_DURATION;
+      // reset bar animation
+      bar.style.transition = 'none';
+      bar.style.width = '100%';
+      setTimeout(()=>{
+        bar.style.transition = 'width '+AUTOCYCLE_DURATION+'s linear';
+        bar.style.width = '0%';
+      }, 50);
+    }
+    timer.textContent = autoCycleSecondsLeft+'s';
+    // flash red in last 3 seconds
+    if(autoCycleSecondsLeft <= 3){
+      timer.style.color = 'var(--alert)';
+      timer.style.animation = 'flash-red 0.5s infinite';
+    } else {
+      timer.style.color = 'var(--cyber)';
+      timer.style.animation = '';
+    }
+  }, 1000);
+}
+
+// ═══════════════════════════════════════
+//   DATA STORES
+// ═══════════════════════════════════════
+let geoMarkers=[], socMarkers=[], cyberMarkers=[];
+let geoData=[], socData=[], cyberData=[];
+
+// ═══════════════════════════════════════
+//   HELPERS
+// ═══════════════════════════════════════
+function rand(min,max){ return min + Math.random()*(max-min); }
+function randEl(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function getRegionBounds(){ return REGIONS[currentRegion]; }
+function rLat(){ const r=getRegionBounds(); return rand(r.latMin,r.latMax); }
+function rLng(){ const r=getRegionBounds(); return rand(r.lngMin,r.lngMax); }
+
+// ═══════════════════════════════════════
+//   GEOINT
+// ═══════════════════════════════════════
+const GEO_TYPES = ['tank','tank','troop','troop','troop','drone','vehicle','vehicle'];
+const GEO_LABELS = {
+  tank:['T-72 Battle Tank','T-90S Bhishma','Arjun MBT'],
+  troop:['Infantry Squad','Recon Unit','Patrol Unit','Special Forces'],
+  drone:['Heron TP UAV','Searcher Mk2','Rustom-2'],
+  vehicle:['BMP-2 IFV','Stallion MRAP','Artillery Unit'],
+};
+
+function createGeoMarker(type, lat, lng){
+  const icon = L.divIcon({
+    className:'',
+    html:`<div class="geo-dot ${type}"></div>`,
+    iconSize:[18,18],iconAnchor:[9,9]
+  });
+  const marker = L.marker([lat,lng],{icon}).addTo(map);
+  const label = randEl(GEO_LABELS[type]||['Unit']);
+  const id = 'GEO-'+String(Math.floor(Math.random()*9000)+1000);
+  const speed = Math.floor(rand(5,35));
+  const heading = randEl(['N','NE','E','SE','S','SW','W','NW']);
+  marker.bindPopup(`
+    <div class="popup-geo">
+      <div class="popup-header">GEOINT // ${type.toUpperCase()} UNIT</div>
+      <div class="popup-row"><span class="popup-key">ID</span><span class="popup-val">${id}</span></div>
+      <div class="popup-row"><span class="popup-key">Asset</span><span class="popup-val">${label}</span></div>
+      <div class="popup-row"><span class="popup-key">Speed</span><span class="popup-val">${speed} km/h</span></div>
+      <div class="popup-row"><span class="popup-key">Heading</span><span class="popup-val">${heading}</span></div>
+      <div class="popup-row"><span class="popup-key">Status</span><span class="popup-val popup-sev-high">ACTIVE</span></div>
+    </div>
+  `, {maxWidth:200});
+  return {marker, lat, lng, dlat:rand(-0.008,0.008), dlng:rand(-0.008,0.008), type, id, speed};
+}
+
+function rebuildGeo(){
+  geoMarkers.forEach(g=>map.removeLayer(g.marker));
+  geoMarkers=[];
+  const tanks = +document.getElementById('sl-tanks').value;
+  const troops = +document.getElementById('sl-troops').value;
+  const drones = +document.getElementById('sl-drones').value;
+  const vehicles = +document.getElementById('sl-vehicles').value;
+  const total = tanks+troops+drones+vehicles;
+  for(let i=0;i<tanks;i++) geoMarkers.push(createGeoMarker('tank',rLat(),rLng()));
+  for(let i=0;i<troops;i++) geoMarkers.push(createGeoMarker('troop',rLat(),rLng()));
+  for(let i=0;i<drones;i++) geoMarkers.push(createGeoMarker('drone',rLat(),rLng()));
+  for(let i=0;i<vehicles;i++) geoMarkers.push(createGeoMarker('vehicle',rLat(),rLng()));
+  document.getElementById('geo-count').textContent = total+' units';
+  document.getElementById('stat-geo').textContent = total;
+  updateThreat();
+}
+
+// ═══════════════════════════════════════
+//   SOCINT
+// ═══════════════════════════════════════
+const SOC_MSGS = {
+  protest:[
+    'Large crowd gathering near checkpoint — estimated 200+',
+    'Anti-military demonstration reported at border town',
+    'Crowd blocking supply road — escalating tensions',
+    'Flash mob protest near LOC gate — police deployed',
+  ],
+  propaganda:[
+    'Coordinated disinformation campaign detected on social media',
+    'Fake casualty numbers being circulated — source unknown',
+    'Pro-insurgent content surge on regional platforms',
+    'Deep-fake video of army officer circulating',
+  ],
+  informant:[
+    'Local informant reports unusual vehicle movement at night',
+    'Human asset confirms troop rotation in progress',
+    'HUMINT asset reports supply cache discovered',
+    'Unverified report: enemy sappers active near river',
+  ],
+};
+
+function createSocMarker(type, lat, lng){
+  const icon = L.divIcon({
+    className:'',
+    html:`<div class="soc-dot"></div>`,
+    iconSize:[17,17],iconAnchor:[8.5,8.5]
+  });
+  const marker = L.marker([lat,lng],{icon}).addTo(map);
+  const id = 'SOC-'+String(Math.floor(Math.random()*9000)+1000);
+  const msg = randEl(SOC_MSGS[type]||['Alert']);
+  const sev = randEl(['HIGH','HIGH','MED','LOW']);
+  const sevClass = sev==='HIGH'?'popup-sev-high':sev==='MED'?'popup-sev-med':'popup-sev-low';
+  const src = randEl(['Twitter/X','Telegram','WhatsApp','HUMINT','SIGINT']);
+  marker.bindPopup(`
+    <div class="popup-soc">
+      <div class="popup-header">SOCINT // ${type.toUpperCase()}</div>
+      <div class="popup-row"><span class="popup-key">ID</span><span class="popup-val">${id}</span></div>
+      <div class="popup-row"><span class="popup-key">Source</span><span class="popup-val">${src}</span></div>
+      <div class="popup-row"><span class="popup-key">Severity</span><span class="popup-val ${sevClass}">${sev}</span></div>
+      <div class="popup-row"><span class="popup-key">Intel</span><span class="popup-val" style="font-size:11px;line-height:1.5;">${msg}</span></div>
+    </div>
+  `, {maxWidth:220});
+  return {marker, lat, lng, id, type, sev, msg, src};
+}
+
+function rebuildSoc(){
+  socMarkers.forEach(s=>map.removeLayer(s.marker));
+  socMarkers=[];
+  const protests = +document.getElementById('sl-protests').value;
+  const prop = +document.getElementById('sl-prop').value;
+  const info = +document.getElementById('sl-info').value;
+  const total = protests+prop+info;
+  for(let i=0;i<protests;i++) socMarkers.push(createSocMarker('protest',rLat(),rLng()));
+  for(let i=0;i<prop;i++) socMarkers.push(createSocMarker('propaganda',rLat(),rLng()));
+  for(let i=0;i<info;i++) socMarkers.push(createSocMarker('informant',rLat(),rLng()));
+  document.getElementById('soc-count').textContent = total+' alerts';
+  document.getElementById('stat-soc').textContent = total;
+  updateThreat();
+}
+
+// ═══════════════════════════════════════
+//   CYBERINT
+// ═══════════════════════════════════════
+const CYBER_LABELS = {
+  intrusion:['Radar Node','Comm Relay','Border Sensor Net','Satellite Uplink','C2 Server'],
+  jamming:['L-Band Jammer','GPS Spoofing Array','Radio Freq. Disruptor','Drone Comms Jammer'],
+  malware:['SCADA Infection','Backdoor Implant','Ransomware Variant','Trojan on Grid Node'],
+};
+
+function createCyberMarker(type, lat, lng){
+  const icon = L.divIcon({
+    className:'',
+    html:`<div class="cyber-wrap"><div class="cyber-dot"></div><div class="cyber-ring"></div></div>`,
+    iconSize:[36,36],iconAnchor:[18,18]
+  });
+  const marker = L.marker([lat,lng],{icon}).addTo(map);
+  const id = 'CYB-'+String(Math.floor(Math.random()*9000)+1000);
+  const target = randEl(CYBER_LABELS[type]||['Unknown']);
+  const sev = randEl(['CRITICAL','CRITICAL','HIGH','MED']);
+  const sevClass = sev==='CRITICAL'||sev==='HIGH'?'popup-sev-high':'popup-sev-med';
+  marker.bindPopup(`
+    <div class="popup-cyber">
+      <div class="popup-header">CYBERINT // ${type.toUpperCase()}</div>
+      <div class="popup-row"><span class="popup-key">ID</span><span class="popup-val">${id}</span></div>
+      <div class="popup-row"><span class="popup-key">Target</span><span class="popup-val">${target}</span></div>
+      <div class="popup-row"><span class="popup-key">Severity</span><span class="popup-val ${sevClass}">${sev}</span></div>
+      <div class="popup-row"><span class="popup-key">Status</span><span class="popup-val popup-sev-high">ACTIVE</span></div>
+    </div>
+  `, {maxWidth:200});
+  return {marker, lat, lng, id, type};
+}
+
+function rebuildCyber(){
+  cyberMarkers.forEach(c=>map.removeLayer(c.marker));
+  cyberMarkers=[];
+  const intr = +document.getElementById('sl-intr').value;
+  const jam = +document.getElementById('sl-jam').value;
+  const mal = +document.getElementById('sl-mal').value;
+  const total = intr+jam+mal;
+  for(let i=0;i<intr;i++) cyberMarkers.push(createCyberMarker('intrusion',rLat(),rLng()));
+  for(let i=0;i<jam;i++) cyberMarkers.push(createCyberMarker('jamming',rLat(),rLng()));
+  for(let i=0;i<mal;i++) cyberMarkers.push(createCyberMarker('malware',rLat(),rLng()));
+  document.getElementById('cyber-count').textContent = total+' events';
+  document.getElementById('stat-cyber').textContent = total;
+  updateThreat();
+}
+
+// ═══════════════════════════════════════
+//   ANIMATION LOOP
+// ═══════════════════════════════════════
+function startAnimationLoop(){
+  setInterval(()=>{
+    const r = getRegionBounds();
+    geoMarkers.forEach(g=>{
+      g.lat += g.dlat;
+      g.lng += g.dlng;
+      if(g.lat<r.latMin||g.lat>r.latMax) g.dlat*=-1;
+      if(g.lng<r.lngMin||g.lng>r.lngMax) g.dlng*=-1;
+      g.marker.setLatLng([g.lat,g.lng]);
+    });
+  }, 400);
+}
+
+// ═══════════════════════════════════════
+//   INTEL LOG FEED
+// ═══════════════════════════════════════
+const LOG_POOL = {
+  geo:[
+    'T-90S detected at grid REF-449',
+    'Drone incursion — sector 7 airspace',
+    'Infantry movement near forward post',
+    'Armored column moving NW at 18 km/h',
+    'Recon unit crossing tributary',
+  ],
+  soc:[
+    'Propaganda surge detected — Telegram channel',
+    'Protest dispersal failed — crowd growing',
+    'HUMINT asset confirms enemy supply movement',
+    'Disinformation: fake casualty report spreading',
+    'Social media blackout in border district',
+  ],
+  cyber:[
+    'Intrusion attempt on radar node #4',
+    'GPS spoofing signal detected — origin unknown',
+    'C2 server ping from unknown IP',
+    'SCADA anomaly on power grid node',
+    'SSL cert mismatch on border comm relay',
+  ],
+};
+
+let logInterval;
+function startLogFeed(){
+  clearInterval(logInterval);
+  logInterval = setInterval(()=>{
+    const types = ['geo','soc','cyber'];
+    const t = randEl(types);
+    const msg = randEl(LOG_POOL[t]);
+    addLog(t, msg);
+  }, 3200);
+}
+
+function addLog(type, msg){
+  const log = document.getElementById('log');
+  const now = new Date();
+  const ts = String(now.getUTCHours()).padStart(2,'0')+':'+String(now.getUTCMinutes()).padStart(2,'0')+':'+String(now.getUTCSeconds()).padStart(2,'0');
+  const span = document.createElement('span');
+  span.className = 'lg lg-'+type;
+  const prefix = type==='geo'?'[GEO]':type==='soc'?'[SOC]':type==='cyber'?'[CYB]':type==='alert'?'[ALT]':'[SYS]';
+  span.textContent = ts+' '+prefix+' '+msg;
+  log.insertBefore(span, log.firstChild);
+  if(log.children.length > 80) log.removeChild(log.lastChild);
+}
+
+function clearLog(){
+  document.getElementById('log').innerHTML='';
+}
+
+// ═══════════════════════════════════════
+//   SLIDER HELPERS
+// ═══════════════════════════════════════
+function updateSlider(el, valId){
+  const pct = ((el.value - el.min)/(el.max - el.min)*100)+'%';
+  el.style.setProperty('--val', pct);
+  document.getElementById(valId).textContent = el.value;
+}
+window.addEventListener('load',()=>{
+  document.querySelectorAll('input[type=range]').forEach(sl=>{
+    const pct=((sl.value-sl.min)/(sl.max-sl.min)*100)+'%';
+    sl.style.setProperty('--val',pct);
+  });
+});
+
+function setSlider(id, valId, val){
+  const el = document.getElementById(id);
+  el.value = Math.min(val, el.max);
+  const pct = ((el.value-el.min)/(el.max-el.min)*100)+'%';
+  el.style.setProperty('--val',pct);
+  document.getElementById(valId).textContent = el.value;
+}
+
+// ═══════════════════════════════════════
+//   THREAT LEVEL
+// ═══════════════════════════════════════
+function updateThreat(){
+  const geo = geoMarkers.length;
+  const soc = socMarkers.length;
+  const cyber = cyberMarkers.length;
+  const sc = activeScenarios.size;
+  const score = geo*1.2 + soc*1.5 + cyber*2 + sc*8;
+  const el = document.getElementById('threat-val');
+  el.className='';
+  if(score < 20){ el.textContent='LOW'; el.classList.add('threat-low'); }
+  else if(score < 45){ el.textContent='MODERATE'; el.classList.add('threat-mod'); }
+  else if(score < 85){ el.textContent='HIGH'; el.classList.add('threat-high'); }
+  else { el.textContent='CRITICAL'; el.classList.add('threat-crit'); }
+}
+
+// ═══════════════════════════════════════
+//   SCENARIOS & AUTO-SIM
+// ═══════════════════════════════════════
+let activeScenarios = new Set();
+
+const SCENARIOS = {
+  troop_buildup:{
+    log:'SCENARIO: Troop buildup initiated — surge in ground units',
+    geo:{tanks:10, troops:18, drones:5, vehicles:12},
+  },
+  cyber_attack:{
+    log:'SCENARIO: Mass cyber attack — all nodes compromised',
+    cyber:{intr:7, jam:5, mal:5},
+  },
+  aerial_incursion:{
+    log:'SCENARIO: Aerial incursion detected — multiple UAVs crossing LOC',
+    geo:{drones:9},
+  },
+  civilian_unrest:{
+    log:'SCENARIO: Mass civilian unrest — border towns destabilized',
+    soc:{protests:8, prop:6, info:4},
+  },
+  comms_blackout:{
+    log:'SCENARIO: Communications blackout — jamming all frequencies',
+    cyber:{jam:6, intr:4},
+  },
+  border_firing:{
+    log:'SCENARIO: Cross-border firing incident — multiple engagements',
+    geo:{tanks:8, troops:15, vehicles:8},
+    soc:{protests:5},
+    cyber:{intr:3},
+  },
+  intel_breach:{
+    log:'SCENARIO: Intelligence breach — classified data exfiltration detected',
+    cyber:{intr:6, mal:5},
+    soc:{prop:5},
+  },
+  full_escalation:{
+    log:'SCENARIO: FULL ESCALATION — all domains critical',
+    geo:{tanks:12, troops:20, drones:9, vehicles:14},
+    soc:{protests:9, prop:7, info:6},
+    cyber:{intr:7, jam:5, mal:5},
+  },
+};
+
+function triggerScenario(key){
+  const sc = SCENARIOS[key];
+  const btn = document.getElementById('sc-'+key);
+  if(activeScenarios.has(key)){
+    activeScenarios.delete(key);
+    btn.classList.remove('active-sc');
+    addLog('sys','Scenario cleared: '+key);
+    rebuildGeo(); rebuildSoc(); rebuildCyber();
+    document.getElementById('stat-sc').textContent = activeScenarios.size;
+    updateThreat();
+    return;
+  }
+  activeScenarios.add(key);
+  btn.classList.add('active-sc');
+  addLog('alert', sc.log);
+
+  if(sc.geo){
+    if(sc.geo.tanks!==undefined){ setSlider('sl-tanks','v-tanks',sc.geo.tanks); }
+    if(sc.geo.troops!==undefined){ setSlider('sl-troops','v-troops',sc.geo.troops); }
+    if(sc.geo.drones!==undefined){ setSlider('sl-drones','v-drones',sc.geo.drones); }
+    if(sc.geo.vehicles!==undefined){ setSlider('sl-vehicles','v-vehicles',sc.geo.vehicles); }
+    rebuildGeo();
+  }
+  if(sc.soc){
+    if(sc.soc.protests!==undefined){ setSlider('sl-protests','v-protests',sc.soc.protests); }
+    if(sc.soc.prop!==undefined){ setSlider('sl-prop','v-prop',sc.soc.prop); }
+    if(sc.soc.info!==undefined){ setSlider('sl-info','v-info',sc.soc.info); }
+    rebuildSoc();
+  }
+  if(sc.cyber){
+    if(sc.cyber.intr!==undefined){ setSlider('sl-intr','v-intr',sc.cyber.intr); }
+    if(sc.cyber.jam!==undefined){ setSlider('sl-jam','v-jam',sc.cyber.jam); }
+    if(sc.cyber.mal!==undefined){ setSlider('sl-mal','v-mal',sc.cyber.mal); }
+    rebuildCyber();
+  }
+  document.getElementById('stat-sc').textContent = activeScenarios.size;
+  updateThreat();
+}
+
+function clearAllScenarios(){
+  activeScenarios.forEach(key=>{
+    const btn = document.getElementById('sc-'+key);
+    if(btn) btn.classList.remove('active-sc');
+  });
+  activeScenarios.clear();
+  document.getElementById('stat-sc').textContent = 0;
+  addLog('sys','All scenarios cleared.');
+  updateThreat();
+}
+
+function resetSimulation() {
+  setSlider('sl-tanks', 'v-tanks', 3);
+  setSlider('sl-troops', 'v-troops', 5);
+  setSlider('sl-drones', 'v-drones', 2);
+  setSlider('sl-vehicles', 'v-vehicles', 4);
+
+  setSlider('sl-protests', 'v-protests', 2);
+  setSlider('sl-prop', 'v-prop', 1);
+  setSlider('sl-info', 'v-info', 3);
+
+  setSlider('sl-intr', 'v-intr', 2);
+  setSlider('sl-jam', 'v-jam', 1);
+  setSlider('sl-mal', 'v-mal', 1);
+
+  clearAllScenarios();
+  rebuildGeo();
+  rebuildSoc();
+  rebuildCyber();
+  addLog('sys', 'Simulation reset to nominal baseline state.');
+}
+
+let autoSimInterval = null;
+function toggleAutoSim() {
+  const btn = document.getElementById('btn-autosim');
+  if(autoSimInterval) {
+    clearInterval(autoSimInterval);
+    autoSimInterval = null;
+    btn.textContent = 'AUTO-SIM: OFF';
+    btn.style.background = 'transparent';
+    btn.style.color = 'var(--warn)';
+    addLog('sys', 'Auto-simulation disabled.');
+  } else {
+    btn.textContent = 'AUTO-SIM: ON';
+    btn.style.background = 'rgba(255, 210, 63, 0.1)';
+    btn.style.color = 'var(--warn)';
+    addLog('sys', 'Auto-simulation engaged. Rapid data mode active...');
+    autoSimInterval = setInterval(autoSimTick, 5000); 
+  }
+}
+
+
+
+function autoSimTick() {
+  const sliders = [
+    {id:'sl-tanks', v:'v-tanks', rebuild:rebuildGeo},
+    {id:'sl-troops', v:'v-troops', rebuild:rebuildGeo},
+    {id:'sl-drones', v:'v-drones', rebuild:rebuildGeo},
+    {id:'sl-vehicles', v:'v-vehicles', rebuild:rebuildGeo},
+    {id:'sl-protests', v:'v-protests', rebuild:rebuildSoc},
+    {id:'sl-prop', v:'v-prop', rebuild:rebuildSoc},
+    {id:'sl-info', v:'v-info', rebuild:rebuildSoc},
+    {id:'sl-intr', v:'v-intr', rebuild:rebuildCyber},
+    {id:'sl-jam', v:'v-jam', rebuild:rebuildCyber},
+    {id:'sl-mal', v:'v-mal', rebuild:rebuildCyber}
+  ];
+
+  const roll = Math.random();
+  let stateGoal;
+  let targetPct;
+  
+  if (roll < 0.30) {
+    stateGoal = 'LOW';
+    targetPct = 0.10;
+  } else if (roll < 0.60) {
+    stateGoal = 'MODERATE';
+    targetPct = 0.40;
+  } else if (roll < 0.90) {
+    stateGoal = 'HIGH';
+    targetPct = 0.70;
+  } else {
+    stateGoal = 'CRITICAL';
+    targetPct = 0.95;
+  }
+
+  if (stateGoal === 'LOW') {
+    if (activeScenarios.size > 0) clearAllScenarios();
+  } else if (stateGoal === 'MODERATE') {
+    if (activeScenarios.size > 0) {
+      const activeArr = Array.from(activeScenarios);
+      triggerScenario(activeArr[0]);
+    }
+  } else if (stateGoal === 'HIGH') {
+    if (activeScenarios.size > 1) {
+      const activeArr = Array.from(activeScenarios);
+      triggerScenario(activeArr[0]);
+    } else if (activeScenarios.size === 0 && Math.random() < 0.4) {
+      const scenarioKeys = Object.keys(SCENARIOS);
+      triggerScenario(scenarioKeys[Math.floor(Math.random() * scenarioKeys.length)]);
+    }
+  } else if (stateGoal === 'CRITICAL') {
+    if (activeScenarios.size < 2 || Math.random() < 0.5) {
+      const scenarioKeys = Object.keys(SCENARIOS);
+      const rs = scenarioKeys[Math.floor(Math.random() * scenarioKeys.length)];
+      if (!activeScenarios.has(rs)) triggerScenario(rs);
+    }
+  }
+
+  const numChanges = Math.floor(Math.random() * 5) + 4; 
+  const rebuildSets = new Set();
+
+  for(let i=0; i<numChanges; i++) {
+    const target = sliders[Math.floor(Math.random() * sliders.length)];
+    const el = document.getElementById(target.id);
+    let currentVal = parseInt(el.value);
+    const maxVal = parseInt(el.max);
+    
+    let pct = currentVal / maxVal;
+    let diff = 0;
+    
+    if (pct < targetPct - 0.15) {
+        diff = Math.floor(Math.random() * 4) + 2;
+    } else if (pct > targetPct + 0.15) {
+        diff = Math.floor(Math.random() * 5) - 5;
+    } else {
+        diff = Math.floor(Math.random() * 5) - 2;
+    }
+    
+    let newVal = currentVal + diff;
+    if(newVal < 0) newVal = 0;
+    if(newVal > maxVal) newVal = maxVal;
+    
+    setSlider(target.id, target.v, newVal);
+    rebuildSets.add(target.rebuild);
+  }
+
+  rebuildSets.forEach(fn => fn());
+
+  // Auto-dispatch payload to bridge after each sim tick
+  if(document.getElementById('hyrox-url').value.trim()){
+    sendToHyrox();
+    addLog('sys', 'Auto-dispatch → payload sent');
+  }
+}
+
+// ═══════════════════════════════════════
+//   AUTO-DISPATCH
+// ═══════════════════════════════════════
+let autoDispatchInterval = null;
+function toggleAutoDispatch(){
+  const btn = document.getElementById('btn-autodispatch');
+  if(autoDispatchInterval){
+    clearInterval(autoDispatchInterval);
+    autoDispatchInterval = null;
+    btn.textContent = 'AUTO-DISPATCH: OFF';
+    btn.style.background = 'transparent';
+    btn.style.color = 'var(--cyber)';
+    btn.style.borderColor = 'var(--cyber)';
+    addLog('sys','Auto-dispatch disabled.');
+  } else {
+    const url = document.getElementById('hyrox-url').value.trim();
+    if(!url){
+      addLog('alert','Set the HYROX endpoint URL before enabling auto-dispatch.');
+      return;
+    }
+    btn.textContent = 'AUTO-DISPATCH: ON ●';
+    btn.style.background = 'rgba(24,234,255,0.1)';
+    btn.style.color = 'var(--bright)';
+    btn.style.borderColor = 'var(--cyber)';
+    addLog('sys','Auto-dispatch enabled → sending every 5s to: '+url);
+    sendToHyrox(); // immediate first send
+    autoDispatchInterval = setInterval(()=>{
+      sendToHyrox();
+      addLog('sys','Auto-dispatch → payload sent');
+    }, 5000);
+  }
+}
+
+// ═══════════════════════════════════════
+//   HYROX PAYLOAD
+// ═══════════════════════════════════════
+function buildPayload(){
+  const now = new Date();
+  return {
+    timestamp: now.toISOString(),
+    session_id: 'HYX-'+Math.floor(Math.random()*900000+100000),
+    classification: 'TOP_SECRET_SCI',
+    border_region: REGIONS[currentRegion].name,
+    threat_level: document.getElementById('threat-val').textContent,
+    active_scenarios: Array.from(activeScenarios),
+    geo_intel:{
+      total_units: geoMarkers.length,
+      units: geoMarkers.map(g=>({
+        id:g.id, type:g.type,
+        lat:+g.lat.toFixed(5), lng:+g.lng.toFixed(5),
+        velocity_kmh:g.speed,
+      }))
+    },
+    social_intel:{
+      total_alerts: socMarkers.length,
+      alerts: socMarkers.map(s=>({
+        id:s.id, type:s.type, severity:s.sev.toLowerCase(),
+        lat:+s.lat.toFixed(5), lng:+s.lng.toFixed(5),
+        msg:s.msg||'', src:s.src||''
+      }))
+    },
+    cyber_intel:{
+      total_events: cyberMarkers.length,
+      alerts: cyberMarkers.map(c=>({
+        id:c.id, type:c.type,
+        lat:+c.lat.toFixed(5), lng:+c.lng.toFixed(5)
+      }))
+    }
+  };
+}
+
+async function sendToHyrox(){
+  const url = document.getElementById('hyrox-url').value.trim();
+  const out = document.getElementById('hyrox-out');
+  const payload = buildPayload();
+
+  out.innerHTML = '<span style="color:var(--cyber);">[ DISPATCHING PAYLOAD TO HYROX... ]</span>\n\n';
+  out.innerHTML += '<span style="color:var(--dim);">'+JSON.stringify(payload,null,2).substring(0,300)+'...\n</span>';
+
+  document.getElementById('stat-dispatch').textContent = new Date().toUTCString().slice(17,25)+' UTC';
+
+  if(!url){
+    setTimeout(()=>{
+      out.innerHTML = simulateHyroxResponse(payload);
+    }, 1200);
+    return;
+  }
+
+  try{
+    const res = await fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data = await res.json();
+    out.innerHTML = formatHyroxResponse(data);
+    addLog('sys','Hyrox response received — '+url);
+  } catch(e){
+    out.innerHTML = `<span class="hx-alert">[ CONNECTION FAILED ]\n\nEndpoint unreachable: ${url}\nError: ${e.message}\n\nUsing simulated response instead...\n\n</span>`
+      + simulateHyroxResponse(payload);
+    addLog('alert','Hyrox endpoint error: '+e.message);
+  }
+}
+
+function simulateHyroxResponse(payload){
+  const threat = payload.threat_level;
+  const geo = payload.geo_intel.total_units;
+  const soc = payload.social_intel.total_alerts;
+  const cyber = payload.cyber_intel.total_events;
+  const sc = payload.active_scenarios.join(', ')||'NONE';
+
+  return `<span class="hx-label">═══ HYROX FUSION ENGINE v4.1.2 ═══</span>
+<span class="hx-label">SESSION</span>   ${payload.session_id}
+<span class="hx-label">REGION </span>   ${payload.border_region}
+<span class="hx-label">TIME   </span>   ${payload.timestamp}
+
+<span class="hx-label">─── TRI-DOMAIN ASSESSMENT ───</span>
+<span class="hx-label">GEO    </span>   ${geo} units active — ${geo>10?'<span class="hx-alert">HIGH DENSITY</span>':geo>5?'<span class="hx-warn">MODERATE</span>':'<span class="hx-ok">NOMINAL</span>'}
+<span class="hx-label">SOC    </span>   ${soc} alerts — ${soc>6?'<span class="hx-alert">MASS UNREST</span>':soc>3?'<span class="hx-warn">ELEVATED</span>':'<span class="hx-ok">LOW</span>'}
+<span class="hx-label">CYBER  </span>   ${cyber} events — ${cyber>5?'<span class="hx-alert">CRITICAL</span>':cyber>2?'<span class="hx-warn">ACTIVE</span>':'<span class="hx-ok">MONITORED</span>'}
+
+<span class="hx-label">─── FUSED THREAT ESTIMATE ───</span>
+<span class="${threat==='CRITICAL'?'hx-alert':threat==='HIGH'?'hx-warn':'hx-ok'}">THREAT LEVEL: ${threat}</span>
+<span class="hx-label">SCENARIOS</span> ${sc}
+
+<span class="hx-label">─── RECOMMENDED ACTION ───</span>
+${threat==='CRITICAL'?'<span class="hx-alert">IMMEDIATE ESCALATION — Notify Sector Commander\nActivate all defensive protocols\nRequest air support authorization</span>':
+  threat==='HIGH'?'<span class="hx-warn">Elevate readiness to DEFCON-3\nCoordinate with intelligence agencies\nActivate reserve units</span>':
+  '<span class="hx-ok">Maintain surveillance posture\nContinue monitoring all domains\nRoutine patrol schedule</span>'}
+
+<span class="hx-label">CONFIDENCE</span> ${Math.floor(70+Math.random()*25)}%
+<span class="hx-label">NEXT SYNC</span> ${new Date(Date.now()+30000).toISOString()}`;
+}
+
+function formatHyroxResponse(data){
+  return `<span class="hx-label">═══ HYROX RESPONSE ═══</span>\n`+JSON.stringify(data,null,2);
+}
+
+function copyPayload(){
+  const txt = JSON.stringify(buildPayload(),null,2);
+  navigator.clipboard.writeText(txt).then(()=>{
+    addLog('sys','Payload copied to clipboard');
+  });
+}
+</script>
+</body>
+</html>

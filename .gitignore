@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+env/
+venv/
+
+# Data
+data/
+datasets/
+*.csv
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Mac
+.DS_Store
+# Logs
+.logs/
+#notebooks
+
+.notebook/

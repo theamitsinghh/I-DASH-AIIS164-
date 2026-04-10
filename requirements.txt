@@ -1,0 +1,38 @@
+# ═══════════════════════════════════════════════════════════════
+#  HYROX — requirements.txt
+#  Install with:  pip install -r requirements.txt
+# ═══════════════════════════════════════════════════════════════
+
+# ── Dashboard ─────────────────────────────────────────────────
+streamlit==1.32.0
+plotly==5.19.0
+folium==0.16.0
+streamlit-folium==0.18.0
+
+# ── Bridge server ──────────────────────────────────────────────
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# ── ML inference ──────────────────────────────────────────────
+xgboost>=2.0.0
+lightgbm>=4.0.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+
+# ── Deep learning (BiLSTM + Autoencoder) ───────────────────────
+# Use keras 3.x which is backend-agnostic.
+# TensorFlow backend recommended for .h5 autoencoder compatibility.
+keras>=3.0.0
+tensorflow>=2.15.0        # needed for model6_autoencoder.h5 (SavedModel format)
+
+# ── NLP / SBERT ───────────────────────────────────────────────
+sentence-transformers>=2.6.0
+transformers>=4.38.0
+torch>=2.1.0              # sentence-transformers backend
+
+# ── Data ──────────────────────────────────────────────────────
+pandas>=2.0.0
+numpy>=1.26.0
+
+# ── Utilities ─────────────────────────────────────────────────
+requests>=2.31.0

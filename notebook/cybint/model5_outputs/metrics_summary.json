@@ -1,0 +1,15 @@
+{
+  "baseline_macro_f1": 0.9063,
+  "final_macro_f1": 0.9087,
+  "final_adj_macro_f1": 0.9089,
+  "auc_ovr": 0.9861,
+  "auc_ovo": 0.987,
+  "cv_macro_f1_mean": 0.905,
+  "cv_macro_f1_std": 0.0031,
+  "cv_auc_mean": 0.9863,
+  "best_critical_threshold": 0.45,
+  "n_features": 60,
+  "n_train": 34000,
+  "n_val": 6000,
+  "timestamp": "2026-04-02T22:33:11.935694"
+}

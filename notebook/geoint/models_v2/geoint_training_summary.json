@@ -1,0 +1,46 @@
+{
+  "trained_at": "2026-03-31T11:48:40.788347",
+  "dataset": "/Users/amitsingh/ML_Projects/WarfareAI/datasets/geoint_cluster_v2.csv",
+  "n_train": 36735,
+  "n_val": 7873,
+  "n_test": 7872,
+  "n_features": 21,
+  "best_iteration": 5,
+  "best_params": {
+    "n_estimators": 525,
+    "max_depth": 7,
+    "learning_rate": 0.0318476763961877,
+    "subsample": 0.8614838463376575,
+    "colsample_bytree": 0.628353469484714,
+    "colsample_bylevel": 0.7048228942714392,
+    "min_child_weight": 13,
+    "gamma": 3.026511841185572,
+    "reg_alpha": 0.3666107116281516,
+    "reg_lambda": 4.49990186723194,
+    "max_delta_step": 1
+  },
+  "test_accuracy": 0.485899,
+  "test_f1_macro": 0.219666,
+  "test_f1_weighted": 0.319096,
+  "test_roc_auc": 0.617464,
+  "cv_mean": 0.485747,
+  "cv_std": 0.000841,
+  "xgboost_version": "2.0.3",
+  "confusion_matrix": [
+    [
+      3820,
+      2,
+      3
+    ],
+    [
+      2338,
+      3,
+      2
+    ],
+    [
+      1697,
+      5,
+      2
+    ]
+  ]
+}
